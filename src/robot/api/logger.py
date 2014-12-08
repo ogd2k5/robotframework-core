@@ -95,6 +95,11 @@ def warn(msg, html=False):
     librarylogger.warn(msg, html)
 
 
+def error(msg, html=False):
+    """Writes the message to the log file using the ``ERROR`` level."""
+    librarylogger.error(msg, html)
+
+
 def console(msg, newline=True, stream='stdout'):
     """Writes the message to the console.
 

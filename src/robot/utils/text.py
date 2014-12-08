@@ -73,7 +73,8 @@ def format_assign_message(variable, value, cut_long=True):
     value = unic(value) if variable.startswith('$') else seq2str2(value)
     if cut_long and len(value) > _MAX_ASSIGN_LENGTH:
         value = value[:_MAX_ASSIGN_LENGTH] + '...'
-    return '%s = %s' % (variable, value)
+    # return '%s = %s' % (variable, value)
+    return 'Variable "%s" Assigned Value "%s"' % (variable[2:-1], value)
 
 
 def get_console_length(text):

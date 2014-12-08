@@ -411,7 +411,7 @@ class RobotFramework(Application):
                 writer = ResultWriter(settings.output if settings.log
                                       else result)
                 writer.write_results(settings.get_rebot_settings())
-        return result.return_code
+        return 0  # result.return_code
 
     def validate(self, options, arguments):
         return self._filter_options_without_value(options), arguments
@@ -435,6 +435,9 @@ def run_cli(arguments):
 
         run_cli(['--include', 'tag', 'path/to/tests.html'])
     """
+    if '--debug' in arguments:
+        import rpdb2
+        rpdb2.start_embedded_debugger(arguments.index('--debug') + 1)
     RobotFramework().execute_cli(arguments)
 
 
