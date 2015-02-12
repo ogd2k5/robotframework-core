@@ -57,7 +57,8 @@ class _RunnableHandler(object):
 
     def __init__(self, library, handler_name, handler_method):
         self.library = library
-        self.name = utils.printable_name(handler_name, code_style=True)
+        name = getattr(handler_method, 'robot_name', None) or handler_name
+        self.name = utils.printable_name(name, code_style=True)
         self.arguments = self._parse_arguments(handler_method)
         self.pre_run_messages = None
         self._handler_name = handler_name
@@ -338,23 +339,6 @@ class _RunKeywordHandler(_PythonHandler):
     def _get_default_run_kw_keywords(self, given_args):
         index = list(self.arguments.positional).index('name')
         return [Keyword(given_args[index], given_args[index+1:])]
-
-
-class _XTimesHandler(_RunKeywordHandler):
-
-    def __init__(self, handler, name):
-        _RunKeywordHandler.__init__(self, handler.library, handler.name,
-                                    handler._handler_method)
-        self.name = name
-        self._doc = "*DEPRECATED* Replace X times syntax with 'Repeat Keyword'."
-
-    def run(self, context, args):
-        resolved_times = context.namespace.variables.replace_string(self.name)
-        _RunnableHandler.run(self, context, (resolved_times,) + tuple(args))
-
-    @property
-    def longname(self):
-        return self.name
 
 
 class _DynamicRunKeywordHandler(_DynamicHandler, _RunKeywordHandler):

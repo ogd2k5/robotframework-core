@@ -23,24 +23,27 @@ implementing them. The specified listeners must be in the same `module search
 path`_ where test libraries are searched from when they are imported. Other
 option is to give an absolute or a relative path to the listener file
 `similarly as with test libraries`__. It is possible to take multiple listeners
-into use by using this option several times.
+into use by using this option several times::
 
-It is also possible to give arguments to listener classes from the
-command line. Arguments are specified after the listener name (or
-path) using a colon as a separator. This approach provides only string
-type arguments and arguments obviously cannot contain colons. However,
-it should be pretty easy to listeners to go around these limitations.
+   pybot --listener MyListener tests.robot
+   jybot --listener com.company.package.Listener tests.robot
+   pybot --listener path/to/MyListener.py tests.robot
+   pybot --listener module.Listener --listener AnotherListener tests.robot
+
+It is also possible to give arguments to listener classes from the command
+line. Arguments are specified after the listener name (or path) using a colon
+(`:`) as a separator. If a listener is given as an absolute Windows path,
+the colon after the drive letter is not considered a separator. Starting from
+Robot Framework 2.8.7, it is possible to use a semicolon (`;`) as an
+alternative argument separator. This is useful if listener arguments
+themselves contain colons, but requires surrounding the whole value with
+quotes on UNIX-like operating systems::
+
+   pybot --listener listener.py:arg1:arg2 tests.robot
+   pybot --listener "listener.py;arg:with:colons" tests.robot
+   pybot --listener C:\\Path\\Listener.py;D:\\data;E:\\extra tests.robot
 
 __ `Using physical path to library`_
-
-Examples::
-
-   pybot --listener MyListener tests.html
-   jybot --listener com.company.package.Listener tests.html
-   pybot --listener path/to/MyListener.py tests.html
-   pybot --listener module.Listener --listener AnotherListener tests.html
-   pybot --listener ListenerWithArgs:arg1:arg2
-   pybot --listener path/to/MyListener.java:argument tests.html
 
 Available listener interface methods
 ------------------------------------
@@ -95,16 +98,15 @@ synonym to `start_suite`.
    |               |                  | * longname: suite name including parent suites   |
    |               |                  | * doc: test suite documentation                  |
    |               |                  | * metadata: dictionary/map containing `free test |
-   |               |                  |   suite metadata`_ (new in 2.5)                  |
+   |               |                  |   suite metadata`_                               |
    |               |                  | * source: absolute path of the file/directory    |
    |               |                  |   test suite was created from (new in 2.7)       |
    |               |                  | * suites: names of suites directly in this suite |
-   |               |                  |   as a list of strings (new in 2.5)              |
+   |               |                  |   as a list of strings                           |
    |               |                  | * tests: names of tests directly in this suite   |
-   |               |                  |   as a list of strings (new in 2.5)              |
+   |               |                  |   as a list of strings                           |
    |               |                  | * totaltests: total number of tests in this suite|
-   |               |                  |   and all its sub-suites as an integer (new in   |
-   |               |                  |   2.5)                                           |
+   |               |                  |   and all its sub-suites as an integer           |
    |               |                  | * starttime: execution start time                |
    +---------------+------------------+--------------------------------------------------+
    | end_suite     | name, attributes | Keys in the attribute dictionary:                |
@@ -115,7 +117,7 @@ synonym to `start_suite`.
    |               |                  | * longname: test suite name including parents    |
    |               |                  | * doc: test suite documentation                  |
    |               |                  | * metadata: dictionary/map containing `free test |
-   |               |                  |   suite metadata`_ (new in 2.6)                  |
+   |               |                  |   suite metadata`_                               |
    |               |                  | * source: absolute path of the file/directory    |
    |               |                  |   test suite was created from (new in 2.7)       |
    |               |                  | * starttime: execution start time                |
@@ -137,10 +139,10 @@ synonym to `start_suite`.
    |               |                  | * doc: test case documentation                   |
    |               |                  | * tags: test case tags as a list of strings      |
    |               |                  | * critical: `yes` or `no` depending              |
-   |               |                  |   is test considered critical or not (new in 2.6)|
+   |               |                  |   is test considered critical or not             |
    |               |                  | * template: contains the name of the template    |
    |               |                  |   used for the test. If the test is not templated|
-   |               |                  |   it will be an empty string (new in 2.6)        |
+   |               |                  |   it will be an empty string                     |
    |               |                  | * starttime: execution start time                |
    +---------------+------------------+--------------------------------------------------+
    | end_test      | name, attributes | Keys in the attribute dictionary:                |
@@ -152,10 +154,10 @@ synonym to `start_suite`.
    |               |                  | * doc: test case documentation                   |
    |               |                  | * tags: test case tags as a list of strings      |
    |               |                  | * critical: `yes` or `no` depending              |
-   |               |                  |   is test considered critical or not (new in 2.6)|
+   |               |                  |   is test considered critical or not             |
    |               |                  | * template: contains the name of the template    |
    |               |                  |   used for the test. If the test is not templated|
-   |               |                  |   it will be an empty string (new in 2.6)        |
+   |               |                  |   it will be an empty string                     |
    |               |                  | * starttime: execution start time                |
    |               |                  | * endtime: execution end time                    |
    |               |                  | * elapsedtime: execution time in milliseconds    |
@@ -170,7 +172,7 @@ synonym to `start_suite`.
    |               |                  |   keywords and `Test Setup`, `Test               |
    |               |                  |   Teardown`, `Suite Setup` or `Suite             |
    |               |                  |   Teardown` for keywords used in suite/test      |
-   |               |                  |   setup/teardown (new in 2.6)                    |
+   |               |                  |   setup/teardown                                 |
    |               |                  | * doc: keyword documentation                     |
    |               |                  | * args: keyword's arguments as a list of strings |
    |               |                  | * starttime: execution start time                |
@@ -249,10 +251,9 @@ to implement any explicit interface or have all these methods.
 Listeners logging
 -----------------
 
-Robot Framework 2.6 introduced new `programmatic logging APIs`_ that
-also listeners can utilize. There are some limitations, however, and
-how different listener methods can log messages is explained in the
-table below.
+Robot Framework offers a `programmatic logging APIs`_ that listeners can
+utilize. There are some limitations, however, and how different listener
+methods can log messages is explained in the table below.
 
 .. table:: How listener methods can log
    :class: tabular
@@ -277,10 +278,6 @@ table below.
 
 .. note:: To avoid recursion, messages logged by listeners are not sent to
           listener methods `log_message` and `message`.
-
-.. warning:: There were severe problems with listeners logging prior
-             to Robot Framework 2.6.2. Using this functionality with
-             earlier versions is thus not recommended.
 
 Listener examples
 -----------------

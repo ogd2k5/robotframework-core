@@ -22,7 +22,8 @@ from robot.errors import (ContinueForLoop, DataError, ExecutionFailed,
                           PassExecution, ReturnFromKeyword)
 from robot import utils
 from robot.utils import asserts
-from robot.variables import is_var, is_list_var
+from robot.variables import (is_list_var, is_var, DictVariableTableValue,
+                             VariableTableValue, VariableSplitter)
 from robot.running import Keyword, RUN_KW_REGISTER
 from robot.running.context import EXECUTION_CONTEXTS
 from robot.running.usererrorhandler import UserErrorHandler
@@ -50,6 +51,15 @@ except NameError:
         return prefix + ''.join(reversed(bins))
 
 
+# TODO: The name of this decorator should be changed. It is used for avoiding
+# arguments to be resolved by many other keywords than run keyword variants.
+# Should also consider:
+# - Exposing this functionality to external libraries. Would require doc
+#   enhancements and clean way to expose variables to make resolving them
+#   based on needs easier.
+# - Removing the functionality that run keyword variants can be overridded
+#   by custom keywords without a warning.
+
 def run_keyword_variant(resolve):
     def decorator(method):
         RUN_KW_REGISTER.register_run_keyword('BuiltIn', method.__name__, resolve)
@@ -63,8 +73,7 @@ class _Converter:
         """Converts the given item to an integer number.
 
         If the given item is a string, it is by default expected to be an
-        integer in base 10. Starting from Robot Framework 2.6 there are two
-        ways to convert from other bases:
+        integer in base 10. There are two ways to convert from other bases:
 
         - Give base explicitly to the keyword as `base` argument.
 
@@ -141,8 +150,7 @@ class _Converter:
         | ${result} = | Convert To Binary | F  | base=16 | prefix=0b | # Result is 0b1111 |
         | ${result} = | Convert To Binary | -2 | prefix=B | length=4 | # Result is -B0010 |
 
-        This keyword was added in Robot Framework 2.6. See also
-        `Convert To Integer`, `Convert To Octal` and `Convert To Hex`.
+        See also `Convert To Integer`, `Convert To Octal` and `Convert To Hex`.
         """
         return self._convert_to_bin_oct_hex(bin, item, base, prefix, length)
 
@@ -164,8 +172,7 @@ class _Converter:
         | ${result} = | Convert To Octal | -F | base=16    | prefix=0 | # Result is -017    |
         | ${result} = | Convert To Octal | 16 | prefix=oct | length=4 | # Result is oct0020 |
 
-        This keyword was added in Robot Framework 2.6. See also
-        `Convert To Integer`, `Convert To Binary` and `Convert To Hex`.
+        See also `Convert To Integer`, `Convert To Binary` and `Convert To Hex`.
         """
         return self._convert_to_bin_oct_hex(oct, item, base, prefix, length)
 
@@ -192,8 +199,7 @@ class _Converter:
         | ${result} = | Convert To Hex | -10 | prefix=0x | length=2     | # Result is -0x0A |
         | ${result} = | Convert To Hex | 255 | prefix=X | lowercase=yes | # Result is Xff   |
 
-        This keyword was added in Robot Framework 2.6. See also
-        `Convert To Integer`, `Convert To Binary` and `Convert To Octal`.
+        See also `Convert To Integer`, `Convert To Binary` and `Convert To Octal`.
         """
         return self._convert_to_bin_oct_hex(hex, item, base, prefix, length,
                                             lowercase)
@@ -221,8 +227,7 @@ class _Converter:
         If the optional `precision` is positive or zero, the returned number
         is rounded to that number of decimal digits. Negative precision means
         that the number is rounded to the closest multiple of 10 to the power
-        of the absolute precision. The support for precision was added in
-        Robot Framework 2.6.
+        of the absolute precision.
 
         Examples:
         | ${result} = | Convert To Number | 42.512 |    | # Result is 42.512 |
@@ -399,6 +404,62 @@ class _Converter:
         | ${ints} =   | Create List | ${1} | ${2} | ${3} |
         """
         return list(items)
+
+    @run_keyword_variant(resolve=0)
+    def create_dictionary(self, *items):
+        """Creates and returns a dictionary based on given items.
+
+        Items are given using ``key=value`` syntax same way as ``&{dictionary}``
+        variables are created in the Variable table. Both keys and values
+        can contain variables, and possible equal sign in key can be escaped
+        with a backslash like ``escaped\\=key=value``. It is also possible to
+        get items from existing dictionaries by simply using them like
+        ``&{dict}``.
+
+        If same key is used multiple times, the last value has precedence.
+        The returned dictionary is ordered, and values with strings as keys
+        can also be accessed using convenient dot-access syntax like
+        ``${dict.key}``.
+
+        Examples:
+        | &{dict} = | Create Dictionary | key=value | foo=bar |
+        | Should Be True | ${dict} == {'key': 'value', 'foo': 'bar'} |
+        | &{dict} = | Create Dictionary | ${1}=${2} | &{dict} | foo=new |
+        | Should Be True | ${dict} == {1: 2, 'key': 'value', 'foo': 'new'} |
+        | Should Be Equal | ${dict.key} | value |
+
+        This keyword was changed in Robot Framework 2.9 in many ways:
+        - Moved from ``Collections`` library to ``BuiltIn``.
+        - Support also non-string keys in ``key=value`` syntax.
+        - Deprecated old syntax to give keys and values separately.
+        - Returned dictionary is ordered and dot-accessible.
+        """
+        separate, combined = self._split_dict_items(items)
+        if separate:
+            self.log("Giving keys and values separately to 'Create Dictionary' "
+                     "keyword is deprecated. Use 'key=value' syntax instead.",
+                     level='WARN')
+        separate = self._format_separate_dict_items(separate)
+        combined = DictVariableTableValue(combined).resolve(self._variables)
+        result = utils.DotDict(separate)
+        result.update(combined)
+        return result
+
+    def _split_dict_items(self, items):
+        separate = []
+        for item in items:
+            name, value = utils.split_from_equals(item)
+            if value is not None or VariableSplitter(item).is_dict_variable():
+                break
+            separate.append(item)
+        return separate, items[len(separate):]
+
+    def _format_separate_dict_items(self, separate):
+        separate = self._variables.replace_list(separate)
+        if len(separate) % 2 != 0:
+            raise DataError('Expected even number of keys and values, got %d.'
+                            % len(separate))
+        return [separate[i:i+2] for i in range(0, len(separate), 2)]
 
 
 class _Verify:
@@ -579,8 +640,7 @@ class _Verify:
         """Fails if objects are equal after converting them to real numbers.
 
         The conversion is done with `Convert To Number` keyword using the
-        given `precision`. The support for giving precision was added in
-        Robot Framework 2.6, in earlier versions it was hard-coded to 6.
+        given `precision`.
 
         See `Should Be Equal As Numbers` for examples on how to use
         `precision` and why it does not always work as expected. See also
@@ -597,8 +657,7 @@ class _Verify:
         """Fails if objects are unequal after converting them to real numbers.
 
         The conversion is done with `Convert To Number` keyword using the
-        given `precision`. The support for giving precision was added in
-        Robot Framework 2.6, in earlier versions it was hard-coded to 6.
+        given `precision`.
 
         Examples:
         | Should Be Equal As Numbers | ${x} | 1.1 | | # Passes if ${x} is 1.1 |
@@ -936,7 +995,17 @@ class _Variables:
         Note: Prior to Robot Framework 2.7.4 variables were returned as
         a custom object that did not support all dictionary methods.
         """
-        return utils.NormalizedDict(self._variables.current, ignore='_')
+        # TODO: Support also returning variables w/o decoration
+        variables = ((self._decorate_variable(name, value), value)
+                     for name, value in self._variables.store.data.items())
+        return utils.NormalizedDict(variables, ignore='_')
+
+    def _decorate_variable(self, name, value):
+        if utils.is_dict_like(value):
+            return '&{%s}' % name
+        if utils.is_list_like(value):
+            return '@{%s}' % name
+        return '${%s}' % name
 
     @run_keyword_variant(resolve=0)
     def get_variable_value(self, name, default=None):
@@ -955,8 +1024,7 @@ class _Variables:
         | ${y} gets value of ${a} if ${a} exists and value of ${b} otherwise
         | ${z} is set to Python `None` if it does not exist previously
 
-        This keyword was added in Robot Framework 2.6. See `Set Variable If`
-        for another keyword to set variables dynamically.
+        See `Set Variable If` for another keyword to set variables dynamically.
         """
         try:
             return self._variables[self._get_var_name(name)]
@@ -966,7 +1034,7 @@ class _Variables:
     def log_variables(self, level='INFO'):
         """Logs all variables in the current scope with given log level."""
         variables = self.get_variables()
-        for name in sorted(variables.keys(), key=lambda s: s.lower()):
+        for name in sorted(variables, key=lambda s: s[2:-1].lower()):
             msg = utils.format_assign_message(name, variables[name],
                                               cut_long=False)
             self.log(msg, level)
@@ -986,7 +1054,10 @@ class _Variables:
         name = self._get_var_name(name)
         msg = self._variables.replace_string(msg) if msg \
             else "Variable %s does not exist." % name
-        asserts.fail_unless(name in self._variables, msg)
+        try:
+            self._variables[name]
+        except DataError:
+            raise AssertionError(msg)
 
     @run_keyword_variant(resolve=0)
     def variable_should_not_exist(self, name, msg=None):
@@ -1003,7 +1074,12 @@ class _Variables:
         name = self._get_var_name(name)
         msg = self._variables.replace_string(msg) if msg \
             else "Variable %s exists." % name
-        asserts.fail_if(name in self._variables, msg)
+        try:
+            self._variables[name]
+        except DataError:
+            pass
+        else:
+            raise AssertionError(msg)
 
     def replace_variables(self, text):
         """Replaces variables in the given text with their current values.
@@ -1081,6 +1157,8 @@ class _Variables:
 
         The name of the variable can be given either as a normal variable name
         (e.g. `${NAME}`) or in escaped format as `\\${NAME}` or `$NAME`.
+        Variable value can be given using the same syntax as when variables
+        are created in the Variable table.
 
         If a variable already exists within the new scope, its value will be
         overwritten. Otherwise a new variable is created. If a variable already
@@ -1088,27 +1166,30 @@ class _Variables:
         variable within the new scope gets the value within the current scope.
 
         Examples:
-        | Set Suite Variable | ${GREET} | Hello, world! |
-        | Set Suite Variable | @{LIST}  | First item    | Second item |
-        | ${ID} =            | Get ID   |
-        | Set Suite Variable | ${ID}    |
+        | Set Suite Variable | ${SCALAR} | Hello, world! |
+        | Set Suite Variable | @{LIST}   | First item    | Second item |
+        | Set Suite Variable | &{DICT}   | key=value     | foo=bar     |
+        | ${ID} =            | Get ID    |
+        | Set Suite Variable | ${ID}     |
 
         To override an existing value with an empty value, use built-in
-        variables `${EMPTY}` or `@{EMPTY}`:
+        variables `${EMPTY}`, `@{EMPTY}` or `&{EMPTY}`:
 
-        | Set Suite Variable | ${GREET} | ${EMPTY} |
+        | Set Suite Variable | ${SCALAR} | ${EMPTY} |
         | Set Suite Variable | @{LIST}  | @{EMPTY} | # New in RF 2.7.4 |
+        | Set Suite Variable | &{DICT}  | &{EMPTY} | # New in RF 2.9   |
 
         *NOTE:* If the variable has value which itself is a variable (escaped
-        or not), you must always use the escaped format to reset the variable:
+        or not), you must always use the escaped format to set the variable:
 
         Example:
-        | ${NAME} =          | Set Variable | \${var} |
+        | ${NAME} =          | Set Variable | \\${var} |
         | Set Suite Variable | ${NAME}      | value | # Sets variable ${var}  |
-        | Set Suite Variable | \${NAME}     | value | # Sets variable ${NAME} |
+        | Set Suite Variable | \\${NAME}    | value | # Sets variable ${NAME} |
 
-        This limitation applies also to `Set Test/Suite/Global Variable`,
-        `Variable Should (Not) Exist`, and `Get Variable Value` keywords.
+        This limitation applies also to `Set Test Variable`, `Set Global
+        Variable`, `Variable Should Exist`, `Variable Should Not Exist` and
+        `Get Variable Value` keywords.
         """
         name = self._get_var_name(name)
         value = self._get_var_value(name, values)
@@ -1143,17 +1224,17 @@ class _Variables:
 
     def _resolve_possible_variable(self, name):
         try:
-            resolved = self._variables[name]
+            resolved = self._variables.replace_string(name)
             return self._unescape_variable_if_needed(resolved)
         except (KeyError, ValueError, DataError):
             return name
 
     def _unescape_variable_if_needed(self, name):
-        if not (isinstance(name, basestring) and len(name) > 1):
-            raise ValueError
         if name.startswith('\\'):
             name = name[1:]
-        elif name[0] in '$@' and name[1] != '{':
+        if len(name) < 2:
+            raise ValueError
+        if name[0] in '$@&' and name[1] != '{':
             name = '%s{%s}' % (name[0], name[1:])
         if is_var(name):
             return name
@@ -1166,10 +1247,15 @@ class _Variables:
     def _get_var_value(self, name, values):
         if not values:
             return self._variables[name]
-        values = self._variables.replace_list(values)
-        if len(values) == 1 and name[0] == '$':
-            return values[0]
-        return list(values)
+        # TODO: In RF 2.10/3.0 the if branch below can be removed and
+        # VariableTableValue used with all variables. See issue #1919.
+        if name[0] == '$':
+            if len(values) != 1 or VariableSplitter(values[0]).is_list_variable():
+                raise DataError("Setting list value to scalar variable '%s' "
+                                "is not supported anymore. Create list "
+                                "variable '@%s' instead." % (name, name[1:]))
+            return self._variables.replace_scalar(values[0])
+        return VariableTableValue(values, name).resolve(self._variables)
 
     def _log_set_variable(self, name, value):
         self.log(utils.format_assign_message(name, value))
@@ -1361,8 +1447,8 @@ class _RunKeyword:
         The keyword name and arguments work as in `Run Keyword`. See
         `Run Keyword If` for a usage example.
 
-        Starting from Robot Framework 2.5 errors caused by invalid syntax,
-        timeouts, or fatal exceptions are not caught by this keyword.
+        Errors caused by invalid syntax, timeouts, or fatal exceptions are not
+        caught by this keyword.
         """
         try:
             return 'PASS', self.run_keyword(name, *args)
@@ -1399,9 +1485,8 @@ class _RunKeyword:
         | Run Keyword And Continue On Failure | Fail | This is a stupid example |
         | Log | This keyword is executed |
 
-        This keyword was added in Robot Framework 2.5. The execution is not
-        continued if the failure is caused by invalid syntax, timeout, or
-        fatal exception.
+        The execution is not continued if the failure is caused by invalid syntax,
+        timeout, or fatal exception.
         """
         try:
             return self.run_keyword(name, *args)
@@ -1428,8 +1513,8 @@ class _RunKeyword:
         | ${msg} = | Run Keyword And Expect Error | * | My KW |
         | Should Start With | ${msg} | Once upon a time in |
 
-        Starting from Robot Framework 2.5 errors caused by invalid syntax,
-        timeouts, or fatal exceptions are not caught by this keyword.
+        Errors caused by invalid syntax, timeouts, or fatal exceptions are not
+        caught by this keyword.
         """
         try:
             self.run_keyword(name, *args)
@@ -1617,8 +1702,6 @@ class _RunKeyword:
 
         Otherwise, this keyword works exactly like `Run Keyword`, see its
         documentation for more details.
-
-        Available in Robot Framework 2.5 and newer.
         """
         self._get_test_in_teardown('Run Keyword If Timeout Occurred')
         if self._context.timeout_occurred:
@@ -1744,8 +1827,6 @@ class _Control:
 
         See `Exit For Loop If` to conditionally exit a for loop without
         using `Run Keyword If` or other wrapper keywords.
-
-        New in Robot Framework 2.5.2.
         """
         self.log("Exiting for loop altogether.")
         raise ExitForLoop()
@@ -2193,8 +2274,6 @@ class _Misc:
         Examples:
         | Import Variables | ${CURDIR}/variables.py   |      |      |
         | Import Variables | ${CURDIR}/../vars/env.py | arg1 | arg2 |
-
-        New in Robot Framework 2.5.4.
         """
         try:
             self._namespace.import_variables(path, list(args), overwrite=True)
@@ -2246,9 +2325,9 @@ class _Misc:
         | Another Keyword |
         | Keyword | xxx |
 
-        Starting from Robot Framework 2.6.2 this keyword can be used also to
-        set the order of keywords in different resource files. In this case
-        resource names must be given without paths or extensions like:
+        This keyword can be used also to set the order of keywords in different
+        resource files. In this case resource names must be given without paths
+        or extensions like:
 
         | Set Library Search Order | resource | another_resource |
 
@@ -2257,8 +2336,8 @@ class _Misc:
         - Keywords in resources always have higher priority than
           keywords in libraries regardless the search order.
         - The old order is returned and can be used to reset the search order later.
-        - Starting from RF 2.6.2, library and resource names in the search order
-          are both case and space insensitive.
+        - Library and resource names in the search order are both case and space
+          insensitive.
         """
         return self._namespace.set_search_order(search_order)
 
@@ -2271,7 +2350,7 @@ class _Misc:
 
         The default error message can be overridden with the `msg` argument.
 
-        New in Robot Framework 2.6. See also `Variable Should Exist`.
+        See also `Variable Should Exist`.
         """
         try:
             handler = self._namespace.get_handler(name)
@@ -2406,7 +2485,7 @@ class _Misc:
             raise RuntimeError("Evaluating expression '%s' failed: %s"
                                % (expression, utils.get_error_message()))
 
-    def call_method(self, object, method_name, *args):
+    def call_method(self, object, method_name, *args, **kwargs):
         """Calls the named method of the given object with the provided arguments.
 
         The possible return value from the method is returned and can be
@@ -2414,19 +2493,29 @@ class _Misc:
         a method with the given name or if executing the method raises an
         exception.
 
+        Support for ``**kwargs`` is new in Robot Framework 2.9. Since that
+        possible equal signs in other arguments must be escaped with a
+        backslash like ``\\=``.
+
         Examples:
         | Call Method      | ${hashtable} | put          | myname  | myvalue |
         | ${isempty} =     | Call Method  | ${hashtable} | isEmpty |         |
         | Should Not Be True | ${isempty} |              |         |         |
         | ${value} =       | Call Method  | ${hashtable} | get     | myname  |
         | Should Be Equal  | ${value}     | myvalue      |         |         |
+        | Call Method      | ${object}    | kwargs    | name=value | foo=bar |
+        | Call Method      | ${object}    | positional   | escaped\\=equals  |
         """
         try:
             method = getattr(object, method_name)
         except AttributeError:
             raise RuntimeError("Object '%s' does not have a method '%s'."
                                % (object, method_name))
-        return method(*args)
+        try:
+            return method(*args, **kwargs)
+        except:
+            raise RuntimeError("Calling method '%s' failed: %s"
+                               % (method_name, utils.get_error_message()))
 
     def regexp_escape(self, *patterns):
         """Returns each argument string escaped for use as a regular expression.
@@ -2470,8 +2559,8 @@ class _Misc:
 
         This keyword can not be used in suite setup or suite teardown.
 
-        New in Robot Framework 2.5. Support for `append` was added in 2.7.7
-        and HTML support in 2.8.
+        Support for `append` was added in Robot Framework 2.7.7 and support
+        for HTML format in 2.8.
         """
         test = self._namespace.test
         if not test:
@@ -2717,9 +2806,8 @@ def register_run_keyword(library, keyword, args_to_process=None):
     there is a warning in such cases unless the keyword is used in long
     format (e.g. MyLib.Keyword).
 
-    Starting from Robot Framework 2.5.2, keywords executed by registered run
-    keywords can be tested in dry-run mode they have 'name' argument which
-    takes the name of the executed keyword.
+    Keywords executed by registered run keywords can be tested in dry-run mode
+    if they have 'name' argument which takes the name of the executed keyword.
 
     2) How to use this method
 

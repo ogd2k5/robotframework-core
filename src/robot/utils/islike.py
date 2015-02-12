@@ -32,7 +32,7 @@ def is_str_like(item, allow_java=False):
 
 
 def is_list_like(item):
-    if is_str_like(item, allow_java=True) or is_dict_like(item, allow_java=True):
+    if is_str_like(item, allow_java=True):
         return False
     try:
         iter(item)
@@ -43,5 +43,7 @@ def is_list_like(item):
 
 
 def is_dict_like(item, allow_java=False):
+    # TODO: allow_java is meaningless since Jython 2.7b4 because java.util.Map
+    # implement collections.Mapping. Can remove that in RF 2.9.
     return (isinstance(item, (Mapping, UserDict)) or
             allow_java and isinstance(item, Map))

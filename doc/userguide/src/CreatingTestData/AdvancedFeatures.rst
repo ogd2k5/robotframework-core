@@ -81,9 +81,8 @@ these problems is specifying the keyword priorities explicitly using the keyword
 :name:`Set Library Search Order` from the BuiltIn_ library.
 
  .. note:: Although the keyword has the word *library* in its name, it works
-           also with resource files starting from Robot Framework 2.6.2.
-           As discussed above, keywords in resources always have higher
-           priority than keywords in libraries, though.
+           also with resource files. As discussed above, keywords in resources
+           always have higher priority than keywords in libraries, though.
 
 The :name:`Set Library Search Order` accepts an ordered list or libraries and
 resources as arguments. When a keyword name in the test data matches multiple
@@ -120,8 +119,8 @@ applies a timeout to an individual test case and overrides the
 possible default value.
 
 Using an empty :setting:`[Timeout]` means that the test has no
-timeout even when :setting:`Test Timeout` is used. Starting from Robot Framework
-2.5.6, it is also possible to use value `NONE` for this purpose.
+timeout even when :setting:`Test Timeout` is used. It is also possible
+to use value `NONE` for this purpose.
 
 Regardless of where the test timeout is defined, the first cell after
 the setting name contains the duration of the timeout. The duration
@@ -179,7 +178,7 @@ keywords with `user keyword timeouts`_.
    \                [Timeout]
    \                Some Keyword     argument
    \
-   No Timeout 2     [Documentation]  Empty timeout using NONE, works with      2.5.6
+   No Timeout 2     [Documentation]  Empty timeout using NONE, works           as well
    \                [Timeout]        NONE
    \                Some Keyword     argument
    ===============  ===============  ========================================  ==========================  ==================
@@ -364,36 +363,43 @@ increase similarly as in the simple case. Finally, it is possible to give
 also the step value that specifies the increment to use. If the step
 is negative, it is used as decrement.
 
-Starting from Robot Framework 2.5.5, it is possible to use simple arithmetics
-such as addition and subtraction with the range limits. This is especially
-useful when the limits are specified with variables.
+It is possible to use simple arithmetics such as addition and subtraction
+with the range limits. This is especially useful when the limits are
+specified with variables.
+
+Starting from Robot Framework 2.8.7, it is possible to use float values for
+lower limit, upper limit and step.
 
 .. table:: For in range examples
    :class: example
 
-   ================  ===============  ===========  ==========  ========  ========  ========
-      Test Case          Action        Argument     Argument     Arg       Arg       Arg
-   ================  ===============  ===========  ==========  ========  ========  ========
-   Only upper limit  [Documentation]  Loops over   values      from 0    to 9
-   \                 :FOR             ${index}     IN RANGE    10
+   ================  ===============  ===========  =========  ===========  ========  =======
+      Test Case          Action        Argument     Argument    Arg          Arg       Arg
+   ================  ===============  ===========  =========  ===========  ========  =======
+   Only upper limit  [Documentation]  Loops over   values     from 0       to 9
+   \                 :FOR             ${index}     IN RANGE   10
    \                                  Log          ${index}
    \
-   Start and end     [Documentation]  Loops over   values      from 1    to 10
-   \                 :FOR             ${index}     IN RANGE    1         11
+   Start and end     [Documentation]  Loops over   values     from 1       to 10
+   \                 :FOR             ${index}     IN RANGE   1            11
    \                                  Log          ${index}
    \
-   Also step given   [Documentation]  Loops over   values      5, 15,    and 25
-   \                 :FOR             ${index}     IN RANGE    5         26        10
+   Also step given   [Documentation]  Loops over   values     5, 15,       and 25
+   \                 :FOR             ${index}     IN RANGE   5            26        10
    \                                  Log          ${index}
    \
-   Negative step     [Documentation]  Loops over   values      13, 3,    and -7
-   \                 :FOR             ${index}     IN RANGE    13        -13       -10
+   Negative step     [Documentation]  Loops over   values     13, 3,       and -7
+   \                 :FOR             ${index}     IN RANGE   13           -13       -10
    \                                  Log          ${index}
    \
-   Arithmetics       [Documentation]  Arithmetics  with        variable
-   \                 :FOR             ${index}     IN RANGE    ${var}+1
+   Arithmetics       [Documentation]  Arithmetics  with       variable
+   \                 :FOR             ${index}     IN RANGE   ${var}+1
    \                                  Log          ${index}
-   ================  ===============  ===========  ==========  ========  ========  ========
+   \
+   Float parameters  [Documentation]  Loops over   values     3.14, 4.34,  and 5.34
+   \                 :FOR             ${index}     IN RANGE   3.14         6.09      1.2
+   \                                  Log          ${index}
+   ================  ===============  ===========  =========  ===========  ========  =======
 
 Exiting for loop
 ~~~~~~~~~~~~~~~~
@@ -427,8 +433,7 @@ instead of using :name:`Exit For Loop` with :name:`Run Keyword If`.
 For more information about these keywords, including more usage examples,
 see their documentation in the BuiltIn_ library.
 
-.. note:: :name:`Exit For Loop` keyword was added Robot Framework 2.5.2 and
-          :name:`Exit For Loop If` in 2.8.
+.. note:: :name:`Exit For Loop If` keyword was added Robot Framework 2.8.
 
 Continuing for loop
 ~~~~~~~~~~~~~~~~~~~
@@ -497,10 +502,6 @@ to make the syntax easier to read.
    \            Repeat Keyword  ${var}        Another KW    argument
    ===========  ==============  ============  ============  ========  ========
 
-Robot Framework also had a special syntax for repeating a single
-keyword. This syntax was deprecated in the 2.0.4 version in favor of
-:name:`Repeat Keyword` and it was removed in the 2.5 version.
-
 Conditional execution
 ---------------------
 
@@ -540,10 +541,6 @@ __ `Suite setup and teardown`_
 
 Parallel execution of keywords
 ------------------------------
-
-Prior to the 2.5 version Robot Framework a had special syntax for executing
-keywords in parallel. This functionality was removed because it was rarely
-used and it never worked fully.
 
 When parallel execution is needed, it must be implemented in test library
 level so that the library executes the code on background. Typically this

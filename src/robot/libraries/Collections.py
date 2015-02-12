@@ -336,18 +336,17 @@ class _List:
           'False' or 'No Values', the error message is simply `msg`.
         - Otherwise the error message is `msg` + 'new line' + default.
 
-        Optional `names` argument (new in 2.6) can be used for naming
-        the indices shown in the default error message. It can either
-        be a list of names matching the indices in the lists or a
-        dictionary where keys are indices that need to be named. It is
-        not necessary to name all of the indices.  When using a
-        dictionary, keys can be either integers or strings that can be
+        Optional `names` argument can be used for naming the indices shown in
+        the default error message. It can either be a list of names matching
+        the indices in the lists or a dictionary where keys are indices that
+        need to be named. It is not necessary to name all of the indices.  When
+        using a dictionary, keys can be either integers or strings that can be
         converted to integers.
 
         Examples:
         | ${names} = | Create List | First Name | Family Name | Email |
         | Lists Should Be Equal | ${people1} | ${people2} | names=${names} |
-        | ${names} = | Create Dictionary | 0 | First Name | 2 | Email |
+        | ${names} = | Create Dictionary | 0=First Name | 2=Email |
         | Lists Should Be Equal | ${people1} | ${people2} | names=${names} |
 
         If the items in index 2 would differ in the above examples, the error
@@ -426,42 +425,25 @@ class _List:
 
 class _Dictionary:
 
-    def create_dictionary(self, *key_value_pairs, **items):
-        """Creates and returns a dictionary based on given items.
+    def set_to_dictionary(self, dictionary, *key_value_pairs, **items):
+        """Adds the given `key_value_pairs` and `items` to the `dictionary`.
 
         Giving items as `key_value_pairs` means giving keys and values
         as separate arguments:
 
-        | ${x} = | Create Dictionary | name | value |   |      |
-        | ${y} = | Create Dictionary | a    | 1     | b | ${2} |
+        | Set To Dictionary | ${D1} | key | value | second | ${2} |
         =>
-        - ${x} = {'name': 'value'}
-        - ${y} = {'a': '1', 'b': 2}
+        - ${D1} = {'a': 1, 'key': 'value', 'second': 2}
 
-        Starting from Robot Framework 2.8.1, items can also be given as kwargs:
+        Starting from Robot Framework 2.8.1, items can also be given as kwargs
+        using `key=value` syntax:
 
-        | ${x} = | Create Dictionary | name=value |        |
-        | ${y} = | Create Dictionary | a=1        | b=${2} |
+        | Set To Dictionary | ${D1} | key=value | second=${2} |
 
         The latter syntax is typically more convenient to use, but it has
         a limitation that keys must be strings.
-        """
-        if len(key_value_pairs) % 2 != 0:
-            raise ValueError("Creating a dictionary failed. There should be "
-                             "even number of key-value-pairs.")
-        return self.set_to_dictionary({}, *key_value_pairs, **items)
 
-    def set_to_dictionary(self, dictionary, *key_value_pairs, **items):
-        """Adds the given `key_value_pairs` and `items` to the `dictionary`.
-
-        See `Create Dictionary` for information about giving items.
-        If the given `key` already exist in the `dictionary`, its value
-        is updated.
-
-        Example:
-        | Set To Dictionary | ${D1} | key | value |
-        =>
-        - ${D1} = {'a': 1, 'key': 'value'}
+        If given keys already exist in the dictionary, their values are updated.
         """
         if len(key_value_pairs) % 2 != 0:
             raise ValueError("Adding data to a dictionary failed. There "
@@ -521,6 +503,7 @@ class _Dictionary:
         =>
         - ${keys} = ['a', 'b', 'c']
         """
+        # TODO: Possibility to disable sorting. Can be handy with OrderedDicts.
         return sorted(dictionary)
 
     def get_dictionary_values(self, dictionary):
@@ -711,14 +694,15 @@ class Collections(_List, _Dictionary):
 
     Following keywords from the BuiltIn library can also be used with
     lists and dictionaries:
-    | *Keyword Name*               | *Applicable With* |
+    | = Keyword Name =             | = Applicable With = | = Comment = |
     | `Create List`                | lists |
+    | `Create Dictionary`          | dicts | Was in Collections until RF 2.9. |
     | `Get Length`                 | both  |
     | `Length Should Be`           | both  |
     | `Should Be Empty`            | both  |
     | `Should Not Be Empty`        | both  |
-    | `Should Contain`             | lists |
-    | `Should Not Contain`         | lists |
+    | `Should Contain`             | both  |
+    | `Should Not Contain`         | both  |
     | `Should Contain X Times`     | lists |
     | `Should Not Contain X Times` | lists |
     | `Get Count`                  | lists |

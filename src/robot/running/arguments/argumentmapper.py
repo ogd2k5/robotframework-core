@@ -12,6 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from robot.errors import DataError
+from robot.utils import DotDict
+
 
 class ArgumentMapper(object):
 
@@ -38,7 +41,7 @@ class KeywordCallTemplate(object):
         self._supports_kwargs = bool(argspec.kwargs)
         self._supports_named = argspec.supports_named
         self.args = [None] * argspec.minargs + [Default(d) for d in defaults]
-        self.kwargs = {}
+        self.kwargs = DotDict()
 
     def fill_positional(self, positional):
         self.args[:len(positional)] = positional
@@ -51,7 +54,7 @@ class KeywordCallTemplate(object):
             elif self._supports_kwargs:
                 self.kwargs[name] = value
             else:
-                raise ValueError("Non-existing named argument '%s'" % name)
+                raise DataError("Non-existing named argument '%s'." % name)
 
     def prune_trailing_defaults(self):
         while self.args and isinstance(self.args[-1], Default):

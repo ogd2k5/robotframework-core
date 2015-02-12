@@ -462,9 +462,6 @@ accidentally exposed as keywords.
    def not_exposed_as_keyword():
        pass
 
-.. note:: Support for the `__all__` attribute is available from
-          Robot Framework 2.5.5 onwards.
-
 Keyword names
 ~~~~~~~~~~~~~
 
@@ -523,6 +520,36 @@ in the `library search path`_.
    My Test      Do Nothing
    \            Hello        world
    ===========  ===========  ============  ============
+
+Using a custom keyword name
+'''''''''''''''''''''''''''
+It is possible to expose a different name for a keyword instead of the
+default keyword name which maps to the method name.  This can be accomplished
+by setting the `robot_name` attribute on the method to the desired custom name.
+The decorator `robot.api.deco.keyword` may be used as a shortcut for setting
+this attribute when used as follows:
+
+.. sourcecode:: python
+
+  from robot.api.deco import keyword
+
+  @keyword('Login Via User Panel')
+  def login(username, password):
+      ...
+
+.. table::
+   :class: example
+
+   ===========  ====================  ============  ============
+   Test Case    Action                Argument      Argument
+   ===========  ====================  ============  ============
+   My Test      Login Via User Panel  ${username}   ${password}
+   ===========  ====================  ============  ============
+
+Using this decorator without an argument will have no effect on the exposed
+keyword name, but will still create the `robot_name` attribute.  This can be useful
+for `Marking methods to expose as keywords`_ without actually changing
+keyword names.
 
 Keyword arguments
 ~~~~~~~~~~~~~~~~~
@@ -1018,10 +1045,10 @@ good idea to run tests using `--loglevel DEBUG`.
 Stopping test execution
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Starting from Robot Framework 2.5, it is possible to fail a test case so that
-`the whole test execution is stopped`__. This is done simply by having a special
-`ROBOT_EXIT_ON_FAILURE` attribute with `True` value set on the
-exception raised from the keyword. This is illustrated in the examples below.
+It is possible to fail a test case so that `the whole test execution is
+stopped`__. This is done simply by having a special `ROBOT_EXIT_ON_FAILURE`
+attribute with `True` value set on the exception raised from the keyword.
+This is illustrated in the examples below.
 
 Python:
 
@@ -1043,11 +1070,10 @@ __ `Stopping test execution gracefully`_
 Continuing test execution despite of failures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Starting from Robot Framework 2.5, it is possible to `continue test
-execution even when there are failures`__. The way to signal this from
-test libraries is adding a special `ROBOT_CONTINUE_ON_FAILURE`
-attribute with `True` value to the exception used to communicate
-the failure. This is demonstrated by the examples below.
+It is possible to `continue test execution even when there are failures`__.
+The way to signal this from test libraries is adding a special
+`ROBOT_CONTINUE_ON_FAILURE` attribute with `True` value to the exception
+used to communicate the failure. This is demonstrated by the examples below.
 
 Python:
 
@@ -1130,10 +1156,10 @@ get their timestamps when the executed keyword ends. This means that
 the timestamps are not accurate and debugging problems especially with
 longer running keywords can be problematic.
 
-Starting from Robot Framework 2.6, keywords have a possibility to add
-an accurate timestamp to the messages they log if there is a need. The
-timestamp must be given as milliseconds since the `Unix epoch`__ and it
-must be placed after the `log level`__ separated from it with a colon::
+Keywords have a possibility to add an accurate timestamp to the messages
+they log if there is a need. The timestamp must be given as milliseconds
+since the `Unix epoch`__ and it must be placed after the `log level`__
+separated from it with a colon::
 
    *INFO:1308435758660* Message with timestamp
    *HTML:1308435758661* <b>HTML</b> message with timestamp
@@ -1274,14 +1300,12 @@ interfaces are available only to Python bases test libraries.
 Public logging API
 ''''''''''''''''''
 
-Robot Framework 2.6 has a new Python based logging API for writing
+Robot Framework has a Python based logging API for writing
 messages to the log file and to the console. Test libraries can use
 this API like `logger.info('My message')` instead of logging
 through the standard output like `print '*INFO* My message'`. In
 addition to a programmatic interface being a lot cleaner to use, this
-API has a benefit that the log messages have accurate timestamps_. An
-obvious limitation is that test libraries using this logging API have
-a dependency to Robot Framework.
+API has a benefit that the log messages have accurate timestamps_.
 
 The public logging API `is thoroughly documented`__ as part of the API
 documentation at https://robot-framework.readthedocs.org. Below is
@@ -1297,13 +1321,20 @@ a simple usage example:
        logger.info('<i>This</i> is a boring example', html=True)
        logger.console('Hello, console!')
 
+An obvious limitation is that test libraries using this logging API have
+a dependency to Robot Framework. Before version 2.8.7 Robot also had
+to be running for the logging to work. Starting from Robot Framework 2.8.7
+if Robot is not running the messages are redirected automatically to Python's
+standard logging__ module.
+
 __ https://robot-framework.readthedocs.org/en/latest/autodoc/robot.api.html#module-robot.api.logger
+__ http://docs.python.org/library/logging.html
 
 Using Python's standard `logging` module
 ''''''''''''''''''''''''''''''''''''''''
 
-In addition to the new `public logging API`_, Robot Framework 2.6 also
-added a built-in support to Python's standard logging__ module. This
+In addition to the new `public logging API`_, Robot Framework offers a
+built-in support to Python's standard logging__ module. This
 works so that all messages that are received by the root logger of the
 module are automatically propagated to Robot Framework's log
 file. Also this API produces log messages with accurate timestamps_,
@@ -1373,9 +1404,6 @@ Python library logging using the logging API during import:
 .. note:: If you log something during initialization, i.e. in Python
           `__init__` or in Java constructor, the messages may be
           logged multiple times depending on the `test library scope`_.
-
-.. note:: The support for writing log messages to the syslog during the
-          library initialization is a new feature in Robot Framework 2.6.
 
 __ `Logging information`_
 
@@ -1466,9 +1494,17 @@ crash or a corrupted output file. If a keyword starts something on
 background, there should be another keyword that checks the status of
 the worker thread and reports gathered information accordingly.
 
-.. note:: Messages logged by non-main threads using the `programmatic
-          logging APIs`_ are silently ignored starting from Robot
-          Framework 2.6.2.
+Messages logged by non-main threads using the normal logging methods from
+`programmatic logging APIs`_  are silently ignored.
+
+There is also a `BackgroundLogger` in separate robotbackgroundlogger__ project,
+with a similar API as the standard `robot.api.logger`. Normal logging
+methods will ignore messages from other than main thread, but the
+`BackgroundLogger` will save the background messages so that they can be later
+logged to Robot's log.
+
+__ https://github.com/robotframework/robotbackgroundlogger
+
 
 Distributing test libraries
 ---------------------------
@@ -1731,6 +1767,34 @@ Dynamic libraries must always have this method. If it is missing, or
 if calling it fails for some reason, the library is considered a
 static library.
 
+Marking methods to expose as keywords
+'''''''''''''''''''''''''''''''''''''
+
+If a dynamic library should contain both methods which are meant to be keywords
+and methods which are meant to be private helper methods, it may be wise to
+mark the keyword methods as such so it is easier to implement `get_keyword_names`.
+The `robot.api.deco.keyword` decorator allows an easy way to do this since it
+creates an attribute on the decorated method which is not normally there (`robot_name`).
+This allows generating the list of keywords just by checking for the `robot_name`
+attribute on every method in the library during `get_keyword_names`.  See
+`Using a custom keyword name`_ for more about this decorator.
+
+.. sourcecode:: python
+
+   from robot.api.deco import keyword
+
+   class DynamicExample:
+
+       def get_keyword_names(self):
+           return [name for name in dir(self) if hasattr(getattr(self, name), 'robot_name')]
+
+       def helper_method(self):
+           ...
+
+       @keyword
+       def keyword_method(self):
+           ....
+
 .. _`Running dynamic keywords`:
 
 Running keywords
@@ -1877,9 +1941,6 @@ documentation directly in the code as the docstring of the library
 class and its `__init__` method. If a non-empty documentation is
 got both directly from the code and from the
 `get_keyword_documentation` method, the latter has precedence.
-
-.. note:: Getting general library documentation is supported in Robot
-          Framework 2.6.2 and newer.
 
 Named argument syntax with dynamic libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -2244,16 +2305,15 @@ __ `Using Robot Framework's internal modules`_
 Getting active library instance from Robot Framework
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Robot Framework 2.5.2 added new BuiltIn_ keyword :name:`Get Library
-Instance` that can be used to get the currently active library
-instance from the framework itself. The library instance returned by
-this keyword is the same as the framework itself uses, and thus
-there is no problem seeing the correct library state. Although this
-functionality is available as a keyword, it is typically used in test
-libraries directly by importing the :name:`BuiltIn` library class `as
-discussed earlier`__. The following example illustrates how to
-implement the same :name:`Title Should Start With` keyword as in the
-earlier example about `using inheritance`_.
+BuiltIn_ keyword :name:`Get Library Instance` can be used to get the
+currently active library instance from the framework itself. The
+library instance returned by this keyword is the same as the framework
+itself uses, and thus there is no problem seeing the correct library
+state. Although this functionality is available as a keyword, it is
+typically used in test libraries directly by importing the :name:`BuiltIn`
+library class `as discussed earlier`__. The following example illustrates
+how to implement the same :name:`Title Should Start With` keyword as in
+the earlier example about `using inheritance`_.
 
 __ `Using Robot Framework's internal modules`_
 
