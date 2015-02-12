@@ -151,7 +151,7 @@ class CommandLineWriter(object):
         if newline:
             text += '\n'
         stream.write(utils.encode_output(text))
-        stream.flush()
+        # stream.flush()
 
     def _highlight(self, before, status, after, newline=True, error=False):
         stream = self._stdout if not error else self._stderr
