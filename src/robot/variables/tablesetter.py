@@ -12,7 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from __future__ import with_statement
 from contextlib import contextmanager
 
 from robot.errors import DataError
@@ -29,7 +28,7 @@ class VariableTableSetter(object):
 
     def set(self, variables, overwrite=False):
         for name, value in VariableTableReader().read(variables):
-            self._store.add(name, value, overwrite)
+            self._store.add(name, value, overwrite, decorated=False)
 
 
 class VariableTableReader(object):
@@ -41,7 +40,7 @@ class VariableTableReader(object):
             try:
                 yield self._get_name_and_value(var.name, var.value,
                                                var.report_invalid_syntax)
-            except DataError, err:
+            except DataError as err:
                 var.report_invalid_syntax(err)
 
     def _get_name_and_value(self, name, value, error_reporter):
@@ -137,7 +136,7 @@ class DictVariableTableValue(VariableTableValueBase):
         try:
             return DotDict(self._yield_replaced(values,
                                                 variables.replace_scalar))
-        except TypeError, err:
+        except TypeError as err:
             raise DataError('Creating dictionary failed: %s' % err)
 
     def _yield_replaced(self, values, replace_scalar):

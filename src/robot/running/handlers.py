@@ -1,4 +1,4 @@
-#  Copyright 2008-2014 Nokia Solutions and Networks
+#  Copyright 2008-2015 Nokia Solutions and Networks
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from __future__ import with_statement
-
 from robot import utils
 from robot.errors import DataError
 from robot.variables import contains_var, is_list_var
@@ -25,8 +23,6 @@ from .keywords import Keywords, Keyword
 from .outputcapture import OutputCapturer
 from .runkwregister import RUN_KW_REGISTER
 from .signalhandler import STOP_SIGNAL_MONITOR
-
-
 
 
 def Handler(library, name, method):
@@ -122,8 +118,8 @@ class _RunnableHandler(object):
         return self._run_with_output_captured_and_signal_monitor(runner, context)
 
     def _log_args(self, positional, named):
-        positional = [utils.safe_repr(arg) for arg in positional]
-        named = ['%s=%s' % (utils.unic(name), utils.safe_repr(value))
+        positional = [utils.prepr(arg) for arg in positional]
+        named = ['%s=%s' % (utils.unic(name), utils.prepr(value))
                  for name, value in named.items()]
         return 'Arguments: [ %s ]' % ' | '.join(positional + named)
 

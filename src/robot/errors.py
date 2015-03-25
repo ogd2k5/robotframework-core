@@ -1,4 +1,4 @@
-#  Copyright 2008-2014 Nokia Solutions and Networks
+#  Copyright 2008-2015 Nokia Solutions and Networks
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -35,10 +35,6 @@ class RobotError(Exception):
     @property
     def message(self):
         return self.__unicode__()
-
-    def __unicode__(self):
-        # Needed to handle exceptions w/ Unicode correctly on Python 2.5
-        return unicode(self.args[0]) if self.args else u''
 
 
 class FrameworkError(RobotError):
@@ -127,18 +123,9 @@ class HandlerExecutionFailed(ExecutionFailed):
                                  exit_on_failure, continue_on_failure)
         self.full_message = details.message
         self.traceback = details.traceback
-        self._handle_deprecated_exit_for_loop(details.error)
 
     def _get(self, error, attr):
         return bool(getattr(error, 'ROBOT_' + attr, False))
-
-    def _handle_deprecated_exit_for_loop(self, error):
-        if self._get(error, 'EXIT_FOR_LOOP'):
-            from robot.output import LOGGER
-            LOGGER.warn("Support for using 'ROBOT_EXIT_FOR_LOOP' attribute to "
-                        "exit for loops is deprecated in Robot Framework 2.8 "
-                        "and will be removed in 2.9.")
-            raise ExitForLoop
 
 
 class ExecutionFailures(ExecutionFailed):

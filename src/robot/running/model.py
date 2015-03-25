@@ -1,4 +1,4 @@
-#  Copyright 2008-2014 Nokia Solutions and Networks
+#  Copyright 2008-2015 Nokia Solutions and Networks
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-from __future__ import with_statement
 
 from robot import model
 from robot.conf import RobotSettings
@@ -224,7 +222,7 @@ class Timeout(object):
 
 
 class UserKeyword(object):
-    # TODO: In 2.9:
+    # TODO: In RF 2.9 (or some later major release):
     # - Teardown should be handled as a keyword like with tests and suites.
     # - Timeout should be handled consistently with tests.
     # - Also resource files should use these model objects.

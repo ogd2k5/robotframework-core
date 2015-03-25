@@ -1,15 +1,14 @@
-import unittest, sys
-
-if __name__ == "__main__":
-    sys.path.insert(0, "../../../src")
+import unittest
 
 from robot.utils.asserts import *
 
 
 AE = AssertionError
 
+
 class MyExc(Exception):
     pass
+
 
 class MyEqual(object):
     def __init__(self, attr=None):
@@ -23,9 +22,10 @@ class MyEqual(object):
         return str(self.attr)
     __repr__ = __str__
 
+
 def func(msg=None):
     if msg is not None:
-        raise ValueError, msg
+        raise ValueError(msg)
 
 
 class TestAsserts(unittest.TestCase):
@@ -42,12 +42,12 @@ class TestAsserts(unittest.TestCase):
         try:
             assert_raises_with_msg(ValueError, 'msg', func)
             error('No AssertionError raised')
-        except AE, err:
+        except AE as err:
             assert_equal(str(err), 'ValueError not raised')
         try:
             assert_raises_with_msg(ValueError, 'msg1', func, 'msg2')
             error('No AssertionError raised')
-        except AE, err:
+        except AE as err:
             expected = "Correct exception but wrong message: msg1 != msg2"
             assert_equal(str(err), expected)
 
@@ -62,10 +62,12 @@ class TestAsserts(unittest.TestCase):
         assert_raises(AE, assert_equals, None, True)
 
     def test_fail_unless_equal_with_values_having_same_string_repr(self):
-        for val, type_ in [(1, 'number'), (1L, 'number'), (MyEqual(1), 'MyEqual')]:
+        for val, type_ in [(1, 'integer'),
+                           (1L, 'integer'),
+                           (MyEqual(1), 'MyEqual')]:
             assert_raises_with_msg(AE, '1 (string) != 1 (%s)' % type_,
                                    fail_unless_equal, '1', val)
-        assert_raises_with_msg(AE, '1.0 (number) != 1.0 (string)',
+        assert_raises_with_msg(AE, '1.0 (float) != 1.0 (string)',
                                fail_unless_equal, 1.0, u'1.0')
         assert_raises_with_msg(AE, 'True (string) != True (boolean)',
                                fail_unless_equal, 'True', True)
@@ -138,4 +140,3 @@ class TestAsserts(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -43,7 +43,7 @@ Call Method From Module
     Should Be Equal    ${path}    ${CURDIR}${/}foo${/}bar.txt
 
 Call Non Existing Method
-    [Documentation]    FAIL Object 'String presentation of MyObject' does not have a method 'non_existing'.
+    [Documentation]    FAIL Object 'String presentation of MyObject' does not have method 'non_existing'.
     Call Method    ${obj}    non_existing
 
 Call Java Method
@@ -56,6 +56,5 @@ Call Java Method
     Should Not Be True    ${isempty}
 
 Call Non Existing Java Method
-    # HashTable str changed from {foo=bar} to {foo: bar} in Jython 2.7b4
-    [Documentation]    FAIL REGEXP: Object '{myname(=|: )myvalue}' does not have a method 'nonExisting'.
+    [Documentation]    FAIL Object '{myname: myvalue}' does not have method 'nonExisting'.
     Call Method    ${hashtable}    nonExisting

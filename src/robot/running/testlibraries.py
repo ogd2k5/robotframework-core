@@ -1,4 +1,4 @@
-#  Copyright 2008-2014 Nokia Solutions and Networks
+#  Copyright 2008-2015 Nokia Solutions and Networks
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -12,15 +12,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from __future__ import with_statement
 import inspect
 import os
-import sys
 
 from robot.errors import DataError
+from robot.libraries import STDLIBS, DEPRECATED_STDLIBS
 from robot.output import LOGGER
 from robot.utils import (getdoc, get_error_details, Importer, is_java_init,
-                         is_java_method, normalize, seq2str2, unic)
+                         is_java_method, JYTHON, normalize, seq2str2, unic)
 
 from .dynamicmethods import (GetKeywordArguments, GetKeywordDocumentation,
                              GetKeywordNames, RunKeyword)
@@ -28,16 +27,20 @@ from .handlers import Handler, InitHandler, DynamicHandler
 from .handlerstore import HandlerStore
 from .outputcapture import OutputCapturer
 
-if sys.platform.startswith('java'):
+if JYTHON:
     from java.lang import Object
 else:
     Object = None
 
 
 def TestLibrary(name, args=None, variables=None, create_handlers=True):
+    if name in STDLIBS or name in DEPRECATED_STDLIBS:
+        import_name = 'robot.libraries.' + name
+    else:
+        import_name = name
     with OutputCapturer(library_import=True):
         importer = Importer('test library')
-        libcode = importer.import_class_or_module(name)
+        libcode = importer.import_class_or_module(import_name)
     libclass = _get_lib_class(libcode)
     lib = libclass(libcode, name, args or [], variables)
     if create_handlers:

@@ -1,4 +1,4 @@
-#  Copyright 2008-2014 Nokia Solutions and Networks
+#  Copyright 2008-2015 Nokia Solutions and Networks
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -17,9 +17,10 @@ import copy
 
 from robot import utils
 from robot.errors import DataError
-from robot.variables import GLOBAL_VARIABLES, is_scalar_var
+from robot.libraries import STDLIBS, STDLIB_TO_DEPRECATED_MAP
 from robot.output import LOGGER, Message
 from robot.parsing.settings import Library, Variables, Resource
+from robot.variables import GLOBAL_VARIABLES
 
 from .usererrorhandler import UserErrorHandler
 from .userkeyword import UserLibrary
@@ -28,16 +29,11 @@ from .runkwregister import RUN_KW_REGISTER
 from .context import EXECUTION_CONTEXTS
 
 
-STDLIB_NAMES = set(('BuiltIn', 'Collections', 'DateTime', 'Dialogs', 'Easter',
-                    'OperatingSystem', 'Process', 'Remote', 'Reserved',
-                    'Screenshot', 'String', 'Telnet', 'XML'))
 IMPORTER = Importer()
 
 
 class Namespace:
     _default_libraries = ('BuiltIn', 'Reserved', 'Easter')
-    _deprecated_libraries = {'BuiltIn': 'DeprecatedBuiltIn',
-                             'OperatingSystem': 'DeprecatedOperatingSystem'}
     _library_import_by_path_endings = ('.py', '.java', '.class', '/', os.sep)
 
     def __init__(self, suite, variables, parent_variables, user_keywords,
@@ -69,7 +65,7 @@ class Namespace:
                 if not item.name:
                     raise DataError('%s setting requires a name' % item.type)
                 self._import(item)
-            except DataError, err:
+            except DataError as err:
                 item.report_invalid_syntax(unicode(err))
 
     def _import(self, import_setting):
@@ -132,21 +128,22 @@ class Namespace:
         lib.start_suite()
         if self.test:
             lib.start_test()
-        self._import_deprecated_standard_libs(lib.name)
+        if name in STDLIB_TO_DEPRECATED_MAP:
+            self.import_library(STDLIB_TO_DEPRECATED_MAP[name])
 
     def _resolve_name(self, import_setting):
         name = import_setting.name
         try:
             name = self.variables.replace_string(name)
-        except DataError, err:
+        except DataError as err:
             self._raise_replacing_vars_failed(import_setting, err)
-        return self._get_path(name, import_setting.directory, import_setting.type)
+        return self._get_name(name, import_setting.directory, import_setting.type)
 
     def _raise_replacing_vars_failed(self, import_setting, err):
         raise DataError("Replacing variables from setting '%s' failed: %s"
                         % (import_setting.type, unicode(err)))
 
-    def _get_path(self, name, basedir, import_type):
+    def _get_name(self, name, basedir, import_type):
         if import_type == 'Library' and not self._is_library_by_path(name):
             return name.replace(' ', '')
         return utils.find_file(name, basedir, file_type=import_type)
@@ -157,12 +154,8 @@ class Namespace:
     def _resolve_args(self, import_setting):
         try:
             return self.variables.replace_list(import_setting.args)
-        except DataError, err:
+        except DataError as err:
             self._raise_replacing_vars_failed(import_setting, err)
-
-    def _import_deprecated_standard_libs(self, name):
-        if name in self._deprecated_libraries:
-            self.import_library(self._deprecated_libraries[name])
 
     def set_search_order(self, new_order):
         old_order = self._kw_store.search_order
@@ -202,7 +195,7 @@ class Namespace:
     def get_handler(self, name):
         try:
             handler = self._kw_store.get_handler(name)
-        except DataError, err:
+        except DataError as err:
             handler = UserErrorHandler(name, unicode(err))
         self._replace_variables_from_user_handlers(handler)
         return handler
@@ -319,9 +312,10 @@ class KeywordStore(object):
         return [handler1, handler2]
 
     def _filter_stdlib_handler(self, handler1, handler2):
-        if handler1.library.orig_name in STDLIB_NAMES:
+        stdlibs_without_remote = STDLIBS - set(['Remote'])
+        if handler1.library.orig_name in stdlibs_without_remote:
             standard, custom = handler1, handler2
-        elif handler2.library.orig_name in STDLIB_NAMES:
+        elif handler2.library.orig_name in stdlibs_without_remote:
             standard, custom = handler2, handler1
         else:
             return [handler1, handler2]
@@ -367,12 +361,11 @@ class KeywordStore(object):
                 if utils.eq(owner.name, owner_name) and name in owner.handlers]
 
     def _raise_multiple_keywords_found(self, name, found, implicit=True):
-        error = "Multiple keywords with name '%s' found.\n" % name
+        error = "Multiple keywords with name '%s' found" % name
         if implicit:
-            error += "Give the full name of the keyword you want to use.\n"
+            error += ". Give the full name of the keyword you want to use"
         names = sorted(handler.longname for handler in found)
-        error += "Found: %s" % utils.seq2str(names)
-        raise DataError(error)
+        raise DataError('\n    '.join([error+':'] + names))
 
 
 class KeywordRecommendationFinder(object):

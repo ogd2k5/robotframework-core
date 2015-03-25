@@ -1,4 +1,4 @@
-#  Copyright 2008-2014 Nokia Solutions and Networks
+#  Copyright 2008-2015 Nokia Solutions and Networks
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -468,7 +468,7 @@ class Variable(object):
         if name.startswith('$') and value == []:
             value = ''
         if isinstance(value, basestring):
-            value = [value]  # Must support scalar lists until RF 2.8 (issue 939)
+            value = [value]
         self.value = value
         self.comment = Comment(comment)
 

@@ -1,7 +1,7 @@
 import unittest
 
 from robot.utils.asserts import assert_equal, assert_not_equal, assert_raises
-from robot.utils import DotDict, OrderedDict
+from robot.utils import DotDict, OrderedDict, IRONPYTHON
 
 
 class TestDotDict(unittest.TestCase):
@@ -33,10 +33,12 @@ class TestDotDict(unittest.TestCase):
         assert_raises(KeyError, self.dd.__delitem__, 'nonex')
         assert_raises(AttributeError, self.dd.__delattr__, 'nonex')
 
-    def test_same_str_and_repr_as_with_normal_dict(self):
-        d = {'foo': 'bar', '"\'': '"\'', '\n': '\r', 1: 2, (): {}, True: False}
-        assert_equal(str(DotDict(d)), str(d))
-        assert_equal(repr(DotDict(d)), repr(d))
+    def test_same_str_and_repr_format_as_with_normal_dict(self):
+        D = {'foo': 'bar', '"\'': '"\'', '\n': '\r', 1: 2, (): {}, True: False}
+        for d in {}, {'a': 1}, D:
+            for formatter in str, repr:
+                result = formatter(DotDict(d))
+                assert_equal(eval(result, {}), d)
 
     def test_is_ordered(self):
         assert_equal(list(self.dd), ['z', 2, 'x'])
@@ -55,10 +57,14 @@ class TestDotDict(unittest.TestCase):
         od2 = OrderedDict(reversed(od1.items()))
         dd1 = DotDict(sorted(d.items()))
         dd2 = DotDict(reversed(dd1.items()))
-        for d1, d2 in [(dd1, d), (dd2, d), (dd1, od1), (dd1, od2),
-                       (dd2, od1), (dd2, od2), (dd1, dd2)]:
+        for d1, d2 in [(dd1, dd2), (dd1, d), (dd2, d), (dd1, od1), (dd2, od2)]:
             assert_equal(d1, d2)
             assert_equal(d2, d1)
+        if not IRONPYTHON:
+            # https://github.com/IronLanguages/main/issues/1168
+            for d1, d2 in [(dd1, od2), (dd2, od1)]:
+                assert_equal(d1, d2)
+                assert_equal(d2, d1)
         assert_not_equal(od1, od2)
 
 

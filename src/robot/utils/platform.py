@@ -1,4 +1,4 @@
-#  Copyright 2008-2014 Nokia Solutions and Networks
+#  Copyright 2008-2015 Nokia Solutions and Networks
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -14,16 +14,9 @@
 
 import os
 import sys
-from java.lang import String
 
 
-# Global workaround for os.listdir bug http://bugs.jython.org/issue1593
-# This bug has been fixed in Jython 2.5.2.
-if sys.version_info[:3] < (2, 5, 2):
-    os._orig_listdir = os.listdir
-    def listdir(path):
-        items = os._orig_listdir(path)
-        if isinstance(path, unicode):
-            items = [unicode(String(i).toString()) for i in items]
-        return items
-    os.listdir = listdir
+JYTHON = sys.platform.startswith('java')
+IRONPYTHON = sys.platform == 'cli'
+UNIXY = os.sep == '/'
+WINDOWS = not UNIXY

@@ -1,4 +1,4 @@
-#  Copyright 2008-2014 Nokia Solutions and Networks
+#  Copyright 2008-2015 Nokia Solutions and Networks
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -15,7 +15,8 @@
 import re
 
 from robot.errors import DataError
-from robot.utils import safe_repr, format_assign_message, get_error_message
+from robot.utils import (format_assign_message, get_error_message, prepr,
+                         type_name)
 
 
 class VariableAssigner(object):
@@ -27,7 +28,7 @@ class VariableAssigner(object):
         self._return_resolver = ReturnValueResolver(assignment)
 
     def assign(self, context, return_value):
-        context.trace(lambda: 'Return: %s' % safe_repr(return_value))
+        context.trace(lambda: 'Return: %s' % prepr(return_value))
         for name, value in self._return_resolver.resolve(return_value):
             if not self._extended_assign(name, value, context.variables):
                 value = self._normal_assign(name, value, context.variables)
@@ -148,8 +149,7 @@ class _MultiReturnValueResolver(object):
             self._raise_expected_list(return_value)
 
     def _raise_expected_list(self, ret):
-        self._raise('Expected list-like value, got %s instead.'
-                    % type(ret).__name__)
+        self._raise('Expected list-like value, got %s.' % type_name(ret))
 
     def _raise(self, error):
         raise DataError('Cannot set variables: %s' % error)

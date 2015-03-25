@@ -7,7 +7,6 @@ For more details:
 http://docs.python.org/distutils/builtdist.html#postinstallation-script
 """
 
-from __future__ import with_statement
 from os.path import join
 import os
 import sys
@@ -32,7 +31,7 @@ def windows_install():
     try:
         _create_script('jybot.bat', 'jython')
         _create_script('ipybot.bat', 'ipy')
-    except Exception, err:
+    except Exception as err:
         print 'Running post-install script failed: %s' % err
         print 'Robot Framework start-up scripts may not work correctly.'
         return
